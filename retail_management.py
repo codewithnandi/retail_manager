@@ -1,8 +1,12 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 import sqlite3
-from datetime import datetime, date
+from datetime import date
+
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
 
@@ -37,7 +41,32 @@ conn.commit()
 root = tk.Tk()
 root.title("Organized Retail Shopping Management")
 root.geometry("900x550")
-root.configure(bg="#f2f2f2")
+
+# ---------------- THEME ----------------
+current_theme = "light"
+
+themes = {
+    "light": {
+        "bg": "#f2f2f2",
+        "header": "#2c3e50",
+        "btn": "#2980b9",
+        "fg": "black"
+    },
+    "dark": {
+        "bg": "#1e1e1e",
+        "header": "#111111",
+        "btn": "#34495e",
+        "fg": "white"
+    }
+}
+
+def apply_theme():
+    root.configure(bg=themes[current_theme]["bg"])
+
+def toggle_theme():
+    global current_theme
+    current_theme = "dark" if current_theme == "light" else "light"
+    admin_login()
 
 def clear():
     for w in root.winfo_children():
@@ -46,17 +75,32 @@ def clear():
 # ---------------- ADMIN LOGIN ----------------
 def admin_login():
     clear()
-    tk.Label(root, text="Admin Login", font=("Arial", 20, "bold"), bg="#2c3e50", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root, bg="#f2f2f2")
-    frame.pack(pady=80)
+    tk.Label(
+        root, text="Admin Login",
+        font=("Arial", 20, "bold"),
+        bg=t["header"], fg="white", height=2
+    ).pack(fill="x")
+
+    # Theme toggle button
+    tk.Button(
+        root,
+        text="🌙 Dark Mode" if current_theme == "light" else "☀ Light Mode",
+        command=toggle_theme,
+        bg=t["btn"], fg="white"
+    ).pack(pady=10)
+
+    frame = tk.Frame(root, bg=t["bg"])
+    frame.pack(pady=60)
 
     user = tk.Entry(frame, font=("Arial", 14))
     pwd = tk.Entry(frame, font=("Arial", 14), show="*")
 
-    tk.Label(frame, text="Username").pack()
+    tk.Label(frame, text="Username", bg=t["bg"], fg=t["fg"]).pack()
     user.pack()
-    tk.Label(frame, text="Password").pack()
+    tk.Label(frame, text="Password", bg=t["bg"], fg=t["fg"]).pack()
     pwd.pack()
 
     def login():
@@ -70,9 +114,16 @@ def admin_login():
 # ---------------- DASHBOARD ----------------
 def dashboard():
     clear()
-    tk.Label(root, text="Retail Management Dashboard", font=("Arial", 20, "bold"), bg="#34495e", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root, bg="#f2f2f2")
+    tk.Label(
+        root, text="Retail Management Dashboard",
+        font=("Arial", 20, "bold"),
+        bg=t["header"], fg="white", height=2
+    ).pack(fill="x")
+
+    frame = tk.Frame(root, bg=t["bg"])
     frame.pack(pady=40)
 
     buttons = [
@@ -85,24 +136,33 @@ def dashboard():
     ]
 
     for text, cmd in buttons:
-        tk.Button(frame, text=text, width=30, height=2, bg="#2980b9", fg="white", command=cmd).pack(pady=6)
+        tk.Button(
+            frame, text=text,
+            width=30, height=2,
+            bg=t["btn"], fg="white",
+            command=cmd
+        ).pack(pady=6)
 
 # ---------------- ADD PRODUCT ----------------
 def add_product():
     clear()
-    tk.Label(root, text="Add Product", font=("Arial", 18, "bold"), bg="#1abc9c", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root)
+    tk.Label(root, text="Add Product", font=("Arial", 18, "bold"),
+             bg="#1abc9c", fg="white", height=2).pack(fill="x")
+
+    frame = tk.Frame(root, bg=t["bg"])
     frame.pack(pady=40)
 
     name = tk.Entry(frame)
     price = tk.Entry(frame)
     stock = tk.Entry(frame)
-
     category = ttk.Combobox(frame, values=["Grocery", "Clothing", "Electronics", "Cosmetics", "Other"])
 
-    for lbl, ent in [("Product Name", name), ("Category", category), ("Price", price), ("Stock", stock)]:
-        tk.Label(frame, text=lbl).pack()
+    for lbl, ent in [("Product Name", name), ("Category", category),
+                     ("Price", price), ("Stock", stock)]:
+        tk.Label(frame, text=lbl, bg=t["bg"], fg=t["fg"]).pack()
         ent.pack(pady=5)
 
     def save():
@@ -118,31 +178,39 @@ def add_product():
 # ---------------- VIEW PRODUCTS ----------------
 def view_products():
     clear()
-    tk.Label(root, text="Products", font=("Arial", 18, "bold"), bg="#9b59b6", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root)
+    tk.Label(root, text="Products", font=("Arial", 18, "bold"),
+             bg="#9b59b6", fg="white", height=2).pack(fill="x")
+
+    frame = tk.Frame(root, bg=t["bg"])
     frame.pack(pady=20)
 
-    data = cur.execute("SELECT * FROM products").fetchall()
-    for p in data:
-        tk.Label(frame, text=f"{p[0]} | {p[1]} | {p[2]} | ₹{p[3]} | Stock:{p[4]}").pack(anchor="w")
+    for p in cur.execute("SELECT * FROM products"):
+        tk.Label(frame, text=f"{p[0]} | {p[1]} | {p[2]} | ₹{p[3]} | Stock:{p[4]}",
+                 bg=t["bg"], fg=t["fg"]).pack(anchor="w")
 
     tk.Button(root, text="Back", command=dashboard).pack(pady=20)
 
-# ---------------- BILLING WITH GST & PDF ----------------
+# ---------------- BILLING ----------------
 def generate_bill():
     clear()
-    tk.Label(root, text="Generate Bill", font=("Arial", 18, "bold"), bg="#e67e22", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root)
+    tk.Label(root, text="Generate Bill", font=("Arial", 18, "bold"),
+             bg="#e67e22", fg="white", height=2).pack(fill="x")
+
+    frame = tk.Frame(root, bg=t["bg"])
     frame.pack(pady=40)
 
     pid = tk.Entry(frame)
     qty = tk.Entry(frame)
 
-    tk.Label(frame, text="Product ID").pack()
+    tk.Label(frame, text="Product ID", bg=t["bg"], fg=t["fg"]).pack()
     pid.pack()
-    tk.Label(frame, text="Quantity").pack()
+    tk.Label(frame, text="Quantity", bg=t["bg"], fg=t["fg"]).pack()
     qty.pack()
 
     def bill():
@@ -162,17 +230,17 @@ def generate_bill():
         conn.commit()
 
         generate_pdf(p[0], qty.get(), subtotal, gst, total)
-        messagebox.showinfo("Invoice", f"Total Amount: ₹{total}\nInvoice Generated")
+        messagebox.showinfo("Invoice", f"Total Amount: ₹{total}")
         dashboard()
 
     tk.Button(frame, text="Generate Bill", bg="#27ae60", fg="white", width=20, command=bill).pack(pady=15)
     tk.Button(frame, text="Back", command=dashboard).pack()
 
-# ---------------- PDF INVOICE ----------------
+# ---------------- PDF ----------------
 def generate_pdf(product, qty, subtotal, gst, total):
     doc = SimpleDocTemplate("invoice.pdf")
     styles = getSampleStyleSheet()
-    content = [Paragraph("Retail Invoice", styles['Title'])]
+    content = [Paragraph("Retail Invoice", styles["Title"])]
 
     table = Table([
         ["Product", product],
@@ -184,23 +252,26 @@ def generate_pdf(product, qty, subtotal, gst, total):
     content.append(table)
     doc.build(content)
 
-# ---------------- DAILY SALES REPORT ----------------
+# ---------------- SALES REPORT ----------------
 def daily_sales():
     clear()
-    tk.Label(root, text="Today's Sales", font=("Arial", 18, "bold"), bg="#c0392b", fg="white", height=2).pack(fill="x")
+    apply_theme()
+    t = themes[current_theme]
 
-    frame = tk.Frame(root)
+    tk.Label(root, text="Today's Sales", font=("Arial", 18, "bold"),
+             bg="#c0392b", fg="white", height=2).pack(fill="x")
+
+    frame = tk.Frame(root, bg=t["bg"])
     frame.pack(pady=20)
 
-    today = date.today().isoformat()
-    data = cur.execute("SELECT product,quantity,total FROM sales WHERE date=?", (today,)).fetchall()
+    total = 0
+    for s in cur.execute("SELECT product,quantity,total FROM sales WHERE date=?", (date.today().isoformat(),)):
+        total += s[2]
+        tk.Label(frame, text=f"{s[0]} | Qty:{s[1]} | ₹{s[2]}",
+                 bg=t["bg"], fg=t["fg"]).pack(anchor="w")
 
-    total_day = 0
-    for s in data:
-        total_day += s[2]
-        tk.Label(frame, text=f"{s[0]} | Qty:{s[1]} | ₹{s[2]}").pack(anchor="w")
-
-    tk.Label(frame, text=f"Total Sales Today: ₹{total_day}", font=("Arial", 12, "bold")).pack(pady=10)
+    tk.Label(frame, text=f"Total Sales Today: ₹{total}", bg=t["bg"], fg=t["fg"],
+             font=("Arial", 12, "bold")).pack(pady=10)
     tk.Button(root, text="Back", command=dashboard).pack(pady=20)
 
 # ---------------- SALES CHART ----------------
@@ -215,9 +286,9 @@ def sales_chart():
 
     plt.figure()
     plt.plot(dates, totals)
-    plt.title("Daily Sales Graph")
+    plt.title("Daily Sales")
     plt.xlabel("Date")
-    plt.ylabel("Total Sales")
+    plt.ylabel("Total")
     plt.show()
 
 # ---------------- START ----------------
