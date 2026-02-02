@@ -3,7 +3,7 @@ This project helps retail store administrators manage inventory, billing, and sa
 
 Admin credentials -->
 
-Username: admin
-Password: retail123
+Username: tripan
+Password: nandi123
 
 
